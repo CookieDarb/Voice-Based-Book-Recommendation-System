@@ -1,0 +1,33 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin-top: 50px;
+}
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    margin: 5px;
+}
+#stop-btn {
+    background-color: #f44336;
+    display: none;
+}
+button:disabled {
+    background-color: #cccccc;
+}
+#status {
+    margin: 10px;
+    font-style: italic;
+    color: #666;
+}
+#recommendations {
+    margin-top: 20px;
+    text-align: left;
+    max-width: 600px;
+    margin: 20px auto;
+}

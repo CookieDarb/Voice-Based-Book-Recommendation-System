@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Book Recommendation</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <h1>Book Recommendation via Voice</h1>
+    <button id="start-btn">Start Listening</button>
+    <button id="stop-btn">Stop Listening</button>
+    <p id="status">Press "Start Listening" and speak clearly</p>
+    <p id="user-query">Your Query: <span id="query-text"></span></p>
+    <div id="recommendations"></div>
+
+    <script>
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const queryText = document.getElementById('query-text');
+        const recommendationsDiv = document.getElementById('recommendations');
+        const statusEl = document.getElementById('status');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (!SpeechRecognition) {
+            statusEl.textContent = "Speech recognition not supported in your browser. Try Chrome or Edge.";
+            startBtn.disabled = true;
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.continuous = false;
+
+            startBtn.onclick = function() {
+                startBtn.disabled = true;
+                stopBtn.style.display = 'inline-block';
+                statusEl.textContent = "Listening... Speak now!";
+                recognition.start();
+            };
+
+            stopBtn.onclick = function() {
+                recognition.stop();
+                stopBtn.style.display = 'none';
+                startBtn.disabled = false;
+                statusEl.textContent = "Microphone turned off";
+            };
+
+            recognition.onresult = function(event) {
+                const userQuery = event.results[0][0].transcript;
+                queryText.textContent = userQuery;
+                statusEl.textContent = "Processing your request...";
+                
+                fetch('/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: userQuery })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Server error');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.recommendations && data.recommendations.length > 0) {
+                        recommendationsDiv.innerHTML = `
+                            <h3>Recommended Books:</h3>
+                            <ul>
+                                ${data.recommendations.map(book => 
+                                    `<li>
+                                        <strong>${book.title}</strong> by ${book.authors}
+                                        <ul>
+                                            <li>
+                                                Genre: <i>${book.categories}</i>
+                                            </li>
+                                            <li>
+                                                Description: ${book.description}
+                                            </li>
+                                        </ul>     
+                                        </li>                                 
+                                    `
+                                ).join('')}
+                            </ul>
+                        `;
+                    } else {
+                        recommendationsDiv.innerHTML = "<p>No books found. Try a different query.</p>";
+                    }
+                    statusEl.textContent = "Done! Press Start to search again";
+                })
+                .catch(error => {
+                    recommendationsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+                    statusEl.textContent = "Error occurred. Try again.";
+                })
+                .finally(() => {
+                    stopBtn.style.display = 'none';
+                    startBtn.disabled = false;
+                });
+            };
+
+            recognition.onerror = function(event) {
+                let message = "Error: ";
+                switch(event.error) {
+                    case 'no-speech':
+                        message += "No speech detected";
+                        break;
+                    case 'audio-capture':
+                        message += "No microphone found";
+                        break;
+                    case 'not-allowed':
+                        message += "Microphone access denied";
+                        break;
+                    default:
+                        message += event.error;
+                }
+                statusEl.textContent = message;
+                stopBtn.style.display = 'none';
+                startBtn.disabled = false;
+            };
+
+            recognition.onend = function() {
+                if (startBtn.disabled) {
+                    stopBtn.style.display = 'none';
+                    startBtn.disabled = false;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
